@@ -24,6 +24,3 @@ This project demonstrates CRUD operations for books, members, and transactions, 
 - Git & GitHub
 - Eclipse IDE
 
-
-## Project Structure
-
