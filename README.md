@@ -1,6 +1,6 @@
 # 📚 Library Management System
 
-> A console-based Library Management System built with **Core Java**, **JDBC**, and **MySQL** — following a clean, professional **DAO Pattern** with Interface-Implementation separation.
+> A console-based Library Management System built with **Core Java**, **JDBC**, and **MySQL** — following a clean, professional **DAO Pattern** with Interface-Implementation separation and a dedicated **Service Layer** for business logic.
 
 ---
 
@@ -9,7 +9,7 @@
 ![Java](https://img.shields.io/badge/Java-17-orange?style=flat-square&logo=java)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-blue?style=flat-square&logo=mysql)
 ![JDBC](https://img.shields.io/badge/JDBC-Pure-green?style=flat-square)
-![IDE](https://img.shields.io/badge/IDE-IntelliJ%20IDEA-purple?style=flat-square&logo=intellijidea)
+![IDE](https://img.shields.io/badge/IDE-Eclipse-purple?style=flat-square&logo=eclipseide)
 
 ---
 
@@ -17,7 +17,7 @@
 
 ### 📖 Book Management
 - Add new books with title, author, category, published year, and copy count
-- View all available books
+- View all available books in a formatted table
 - Update book details
 - Delete books from the system
 - Track total copies vs. available copies separately
@@ -29,10 +29,17 @@
 - Membership date tracking
 
 ### 🔄 Transaction Management
-- Issue books to members with issue date and due date
+- Issue books to members with issue date and **due date (14 days)**
 - Return books and update availability automatically
+- **Borrowing limit validation** — prevents issuing beyond member's limit
+- **Overdue fine calculation** — ₹2 per day after due date
 - Track transaction status (`ISSUED` / `RETURNED`)
 - View full transaction history
+
+### 🛡️ Input Validation
+- Rejects negative numbers and zero for IDs, copies, and limits
+- Rejects empty strings for required fields
+- Custom `InvalidInputException` for clear, specific error messages
 
 ---
 
@@ -45,23 +52,35 @@ LibraryManagementSystem/
 │   ├── module-info.java
 │   └── com/library/
 │       │
-│       ├── dao/                        # DAO Interfaces
+│       ├── Main.java                        # Entry point
+│       │
+│       ├── controller/                      # User interaction & menus
+│       │   └── LibraryController.java
+│       │
+│       ├── service/                         # Business logic layer
+│       │   └── LibraryService.java
+│       │
+│       ├── dao/                             # DAO Interfaces
 │       │   ├── BookDao.java
 │       │   ├── MemberDao.java
 │       │   └── TransactionDao.java
 │       │
-│       ├── dao/impl/                   # DAO Implementations
+│       ├── dao/impl/                        # DAO Implementations
 │       │   ├── BookDaoImpl.java
 │       │   ├── MemberDaoImpl.java
 │       │   └── TransactionDaoImpl.java
 │       │
-│       ├── model/                      # Plain Java Objects
+│       ├── model/                           # Plain Java Objects
 │       │   ├── Book.java
 │       │   ├── Member.java
 │       │   └── Transaction.java
 │       │
+│       ├── exception/                       # Custom Exceptions
+│       │   └── InvalidInputException.java
+│       │
 │       └── util/
-│           └── DbUtil.java             # JDBC Connection Utility
+│           ├── DbUtil.java                  # JDBC Connection Utility
+│           └── InputValidator.java          # Input validation utility
 │
 ├── README.md
 └── .gitignore
@@ -72,19 +91,25 @@ LibraryManagementSystem/
 ## 🧠 Architecture Overview
 
 ```
-Presentation / Main
-        ↓
-  DAO Interface Layer
-   (BookDao, MemberDao, TransactionDao)
-        ↓
-  DAO Implementation Layer
-   (BookDaoImpl, MemberDaoImpl, TransactionDaoImpl)
-        ↓
-    MySQL Database
+Main
+  ↓
+LibraryController        ← handles menus & user input
+  ↓
+LibraryService           ← business logic (validation, fine calc, limit check)
+  ↓
+DAO Interface Layer
+ (BookDao, MemberDao, TransactionDao)
+  ↓
+DAO Implementation Layer
+ (BookDaoImpl, MemberDaoImpl, TransactionDaoImpl)
+  ↓
+MySQL Database
 
-  Model → Plain Java objects (Book, Member, Transaction)
-  DAO   → All SQL & JDBC logic, interface + implementation
-  Util  → Centralized DB connection via DbUtil
+  Model     → Plain Java objects (Book, Member, Transaction)
+  Service   → Business rules and validations
+  DAO       → All SQL & JDBC logic
+  Util      → DB connection and input validation
+  Exception → Custom exceptions for clean error handling
 ```
 
 ---
@@ -94,12 +119,12 @@ Presentation / Main
 ### 📘 `books`
 ```sql
 CREATE TABLE books (
-    book_id         INT AUTO_INCREMENT PRIMARY KEY,
-    title           VARCHAR(200) NOT NULL,
-    author          VARCHAR(100) NOT NULL,
-    category        VARCHAR(100),
-    published_year  INT,
-    total_copies    INT NOT NULL,
+    book_id          INT AUTO_INCREMENT PRIMARY KEY,
+    title            VARCHAR(200) NOT NULL,
+    author           VARCHAR(100) NOT NULL,
+    category         VARCHAR(100),
+    published_year   INT,
+    total_copies     INT NOT NULL,
     available_copies INT NOT NULL
 );
 ```
@@ -123,9 +148,10 @@ CREATE TABLE transactions (
     book_id        INT NOT NULL,
     member_id      INT NOT NULL,
     issue_date     DATE NOT NULL,
+    due_date       DATE NOT NULL,
     return_date    DATE,
     status         ENUM('ISSUED', 'RETURNED') NOT NULL,
-    FOREIGN KEY (book_id)   REFERENCES books(member_id),
+    FOREIGN KEY (book_id)   REFERENCES books(book_id),
     FOREIGN KEY (member_id) REFERENCES members(member_id)
 );
 ```
@@ -146,42 +172,45 @@ USE library_db;
 -- Then run the table creation scripts above
 ```
 
-**3. Update DB credentials**
+**3. Add DB credentials**
 
-Open `src/com/library/util/DbUtil.java` and update:
-```java
-private static final String URL      = "jdbc:mysql://localhost:3306/library_db";
-private static final String USER     = "your_mysql_username";
-private static final String PASSWORD = "your_mysql_password";
+Create a file `src/db.properties` (this file is gitignored):
+```properties
+db.url=jdbc:mysql://localhost:3306/library_db
+db.user=your_mysql_username
+db.password=your_mysql_password
 ```
 
 **4. Add MySQL Connector/J**
 
-Add the MySQL JDBC driver JAR to your project's classpath in IntelliJ IDEA:
-`File → Project Structure → Libraries → Add JAR`
+Right-click project → **Build Path → Add External JARs** → select `mysql-connector-j-x.x.x.jar`
 
 **5. Run the project**
 
-Run `Main.java` from IntelliJ IDEA or compile and run via terminal.
+Run `Main.java` from Eclipse.
 
 ---
 
 ## 🎯 What This Project Demonstrates
 
 - ✅ **DAO Design Pattern** — clean interface + implementation separation
-- ✅ **JDBC Best Practices** — `PreparedStatement`, `try-with-resources`, connection pooling via utility class
+- ✅ **Service Layer** — business logic separated from controller and DAO
+- ✅ **JDBC Best Practices** — `PreparedStatement`, `try-with-resources`
 - ✅ **Java Modules** — use of `module-info.java` for modular project structure
 - ✅ **`LocalDate` & SQL Date mapping** — modern Java date types integrated with JDBC
-- ✅ **Null safety** — nullable `return_date` handled gracefully
-- ✅ **Database Normalization** — proper foreign key relationships across tables
+- ✅ **Null safety** — nullable `return_date` and `due_date` handled gracefully
+- ✅ **Custom Exceptions** — `InvalidInputException` for meaningful error messages
+- ✅ **Input Validation** — dedicated `InputValidator` utility class
+- ✅ **Fine Calculation** — overdue fine of ₹2/day calculated on return
+- ✅ **Borrowing Limit Validation** — enforced before issuing a book
+- ✅ **Secure Credentials** — DB credentials loaded from `db.properties`, not hardcoded
 - ✅ **Clean Code** — meaningful naming, separation of concerns, helper mapping methods
 
 ---
 
 ## 📌 Future Improvements
 
-- [ ] Add a Service Layer for business logic (e.g. borrowing limit validation)
-- [ ] Fine calculation for overdue returns
+- [ ] More custom exceptions (BookNotFoundException, MemberNotFoundException, etc.)
 - [ ] Spring Boot REST API
 - [ ] Web UI with HTML / CSS / JavaScript
 - [ ] Hibernate / JPA for ORM
@@ -190,7 +219,7 @@ Run `Main.java` from IntelliJ IDEA or compile and run via terminal.
 
 ---
 
-## 👨‍💻 Author
+## 👩‍💻 Author
 
 **Roshani Dangat**
 Java Developer | Backend Enthusiast
