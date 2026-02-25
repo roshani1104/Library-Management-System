@@ -13,16 +13,17 @@ public class TransactionDaoImpl implements TransactionDao {
     @Override
     public boolean addTransaction(Transaction transaction) {
         String sql = "INSERT INTO transactions (book_id, member_id, issue_date, due_date, return_date, status) " +
-                     "VALUES (?, ?, ?, ?, ?)";
+                     "VALUES (?, ?, ?, ?, ?,?)";
 
         try (Connection con = DbUtil.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
-            ps.setInt(1, transaction.getBookId());
+        	ps.setInt(1, transaction.getBookId());
             ps.setInt(2, transaction.getMemberId());
             ps.setDate(3, Date.valueOf(transaction.getIssueDate()));
-            ps.setDate(4, transaction.getReturnDate() != null ? Date.valueOf(transaction.getReturnDate()) : null);
-            ps.setString(5, transaction.getStatus());
+            ps.setDate(4, transaction.getDueDate() != null ? Date.valueOf(transaction.getDueDate()) : null); // ← was missing
+            ps.setDate(5, transaction.getReturnDate() != null ? Date.valueOf(transaction.getReturnDate()) : null);
+            ps.setString(6, transaction.getStatus());
 
             return ps.executeUpdate() > 0;
 
