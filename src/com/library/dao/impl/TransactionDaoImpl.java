@@ -12,7 +12,7 @@ public class TransactionDaoImpl implements TransactionDao {
 
     @Override
     public boolean addTransaction(Transaction transaction) {
-        String sql = "INSERT INTO transactions (book_id, member_id, issue_date, return_date, status) " +
+        String sql = "INSERT INTO transactions (book_id, member_id, issue_date, due_date, return_date, status) " +
                      "VALUES (?, ?, ?, ?, ?)";
 
         try (Connection con = DbUtil.getConnection();
@@ -104,5 +104,27 @@ public class TransactionDaoImpl implements TransactionDao {
         t.setReturnDate(rs.getDate("return_date") != null ? rs.getDate("return_date").toLocalDate() : null);
         t.setStatus(rs.getString("status"));
         return t;
+    }
+    
+    @Override
+    public List<Transaction> getTransactionsByMemberId(int memberId) {
+        String sql = "SELECT * FROM transactions WHERE member_id = ?";
+        List<Transaction> transactions = new ArrayList<>();
+
+        try (Connection con = DbUtil.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, memberId);
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                transactions.add(mapRowToTransaction(rs));
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Error fetching transactions by member ID", e);
+        }
+
+        return transactions;
     }
 }

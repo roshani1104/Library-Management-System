@@ -12,5 +12,7 @@ public interface TransactionDao {
     List<Transaction> getAllTransactions();
     
     boolean updateTransaction(Transaction transaction);
+    
+    List<Transaction> getTransactionsByMemberId(int memberId);
 
 }
