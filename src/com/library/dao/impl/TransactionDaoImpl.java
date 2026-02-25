@@ -95,13 +95,13 @@ public class TransactionDaoImpl implements TransactionDao {
         }
     }
 
-    // 🔹 Helper method: map ResultSet → Transaction
     private Transaction mapRowToTransaction(ResultSet rs) throws SQLException {
         Transaction t = new Transaction();
         t.setTransactionId(rs.getInt("transaction_id"));
         t.setBookId(rs.getInt("book_id"));
         t.setMemberId(rs.getInt("member_id"));
         t.setIssueDate(rs.getDate("issue_date").toLocalDate());
+        t.setDueDate(rs.getDate("due_date") != null ? rs.getDate("due_date").toLocalDate() : null); // ← missing
         t.setReturnDate(rs.getDate("return_date") != null ? rs.getDate("return_date").toLocalDate() : null);
         t.setStatus(rs.getString("status"));
         return t;
