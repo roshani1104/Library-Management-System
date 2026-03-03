@@ -1,5 +1,14 @@
+# Database credentials - never upload this
+src/config.properties
 
-/bin/
-/.settings/
-/.classpath
-/.project
+bin/
+out/
+*.class
+
+.project
+.classpath
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
